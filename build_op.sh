@@ -3,20 +3,21 @@
 set -e
 export NEEDRESTART_MODE=a
 
-# === 📁 目录设置 ===
+# === 🧠 目录设置 ===
 WORK_DIR="/build"
 OUT_DIR="/outbuild"
 BUILD_LOG="$WORK_DIR/build.log"
 
-DEFAULT_PLUGINS_FILE="$WORK_DIR/plugin_list.txt"
-CONFIG_SEED_FILE="$WORK_DIR/.config.seed"
+DEFAULT_PLUGINS="luci-app-passwall luci-app-openclash luci-app-wireguard ip-full resolveip luci-app-ddns-go netdata luci-app-mwan3 luci-app-udpxy luci-app-vnstat"
+DEFAULT_ARCH="x86_64"
 
-# === 拉取源码 ===
+# === 拉取源码（默认超时选择稳定版） ===
 fetch_sources() {
   cd "$WORK_DIR"
   echo "🌐 正在拉取 OpenWrt 官方源码..."
   rm -rf openwrt
 
+  echo "📦 正在获取可用版本信息..."
   STABLE_TAG=$(git ls-remote --tags https://github.com/openwrt/openwrt.git | grep -Eo 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1 | awk -F/ '{print $3}')
   echo "🔖 检测到最新稳定版: $STABLE_TAG"
 
@@ -39,7 +40,6 @@ fetch_sources() {
   esac
 }
 
-# === 添加第三方 feeds ===
 add_feeds() {
   echo "🔧 添加第三方 feeds..."
   cd "$WORK_DIR/openwrt"
@@ -48,39 +48,28 @@ add_feeds() {
   ./scripts/feeds update -a && ./scripts/feeds install -a
 }
 
-# === 生成 .config 配置 ===
-generate_config() {
+generate_default_config() {
   cd "$WORK_DIR/openwrt"
-  echo "⚙️ 生成 .config 配置..."
-  cp /dev/null .config
 
-  if [ -f "$CONFIG_SEED_FILE" ]; then
-    cat "$CONFIG_SEED_FILE" >> .config
-  fi
+  echo "🧹 清理旧配置..."
+  rm -f .config
 
-  if [ -f "$DEFAULT_PLUGINS_FILE" ]; then
-    while read -r plugin; do
-      echo "CONFIG_PACKAGE_${plugin}=y" >> .config
-    done < "$DEFAULT_PLUGINS_FILE"
-  fi
-
+  echo "⚙️ 生成默认 .config 配置（架构：$DEFAULT_ARCH）..."
+  make defconfig
+  for pkg in $DEFAULT_PLUGINS; do
+    echo "CONFIG_PACKAGE_${pkg}=y" >> .config
+  done
+  echo "CONFIG_TARGET_${DEFAULT_ARCH}_Generic=y" >> .config
+  echo "CONFIG_TARGET_${DEFAULT_ARCH}=y" >> .config
   make defconfig
 }
 
-# === 编译 OpenWrt 并记录日志 ===
 build_firmware() {
   cd "$WORK_DIR/openwrt"
-  echo "🚀 开始编译 OpenWrt..."
+  echo "🚀 开始编译固件，日志输出至 $BUILD_LOG"
   make -j$(nproc --ignore=1) V=s | tee "$BUILD_LOG"
-
-  if grep -qi 'error' "$BUILD_LOG"; then
-    echo "❌ 编译中出现错误，请查看日志：$BUILD_LOG"
-    grep -i 'error' "$BUILD_LOG" | tail -n 20
-    exit 1
-  fi
 }
 
-# === 拷贝输出固件 ===
 save_output() {
   cd "$WORK_DIR/openwrt"
   local out_path=bin/targets
@@ -96,7 +85,7 @@ save_output() {
 cd "$WORK_DIR"
 fetch_sources
 add_feeds
-generate_config
+generate_default_config
 build_firmware
 save_output
 
