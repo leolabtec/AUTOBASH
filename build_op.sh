@@ -71,7 +71,7 @@ generate_config() {
 build_firmware() {
   cd "$WORK_DIR/openwrt"
   echo "🚀 开始编译 OpenWrt..."
-  make -j$(nproc) V=s | tee "$BUILD_LOG"
+  make -j$(nproc --ignore=1) V=s | tee "$BUILD_LOG"
 
   if grep -qi 'error' "$BUILD_LOG"; then
     echo "❌ 编译中出现错误，请查看日志：$BUILD_LOG"
