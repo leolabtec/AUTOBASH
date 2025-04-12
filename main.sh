@@ -36,7 +36,7 @@ function main_menu() {
         echo
         echo "🌐 WEB 多站部署管理 - 创建 WordPress 新站点"
         echo "----------------------------------------"
-        echo "1) 创建新站点"
+        echo "1) 创建New WordPress 站点"
         echo "2) 查看已部署站点"
         echo "3) 查看数据库容器"
         echo "4) 删除站点（包含数据库与配置）"
