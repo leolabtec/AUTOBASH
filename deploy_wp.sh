@@ -27,7 +27,7 @@ function deploy_wp() {
     read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
     [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
 
-    sitename=$(echo "$domain" | cut -d. -f1)
+    sitename=$(echo "$domain" | sed 's/\./_/g')
     site_dir="$WEB_BASE/$sitename"
     db_name="wp_${sitename}"
     db_user="wpuser_${sitename}"
@@ -35,7 +35,7 @@ function deploy_wp() {
     db_root=$(openssl rand -base64 12)
 
     echo "[*] 创建站点目录：$site_dir"
-    mkdir -p "$site_dir/html" "$site_dir/db"
+    mkdir -p "$site_dir/html"
 
     echo "[*] 下载 WordPress..."
     curl -sL https://cn.wordpress.org/latest-zh_CN.tar.gz | tar -xz -C "$site_dir/html" --strip-components=1
@@ -106,7 +106,7 @@ EOF
         exit 1
     }
 
-    echo -e "\n[✅] 站点部署成功"
+    echo "\n[✅] 站点部署成功"
     echo "----------------------------------------------"
     echo "🌐 域名: https://$domain"
     echo "🔐 数据库名: $db_name"
