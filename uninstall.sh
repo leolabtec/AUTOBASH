@@ -21,8 +21,11 @@ echo "[*] 停止并删除 Caddy 容器..."
 docker rm -f caddy-proxy 2>/dev/null || true
 
 echo "[*] 删除所有 WordPress/MySQL 容器..."
-for cname in $(docker ps -a --format '{{.Names}}' | grep -E '^wp-|^db-'); do
-    docker rm -f "$cname"
+wp_db_containers=$(docker ps -a --format '{{.Names}}' | grep '^wp-' || true)
+wp_db_containers+=$'\n'$(docker ps -a --format '{{.Names}}' | grep '^db-' || true)
+
+for cname in $wp_db_containers; do
+    docker rm -f "$cname" || true
 done
 
 # 删除 docker 网络
