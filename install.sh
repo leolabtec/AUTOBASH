@@ -1,8 +1,7 @@
 #!/bin/bash
-
 set -Eeuo pipefail
 
-# ✅ 错误追踪机制
+# ✅ 错误处理
 function error_handler() {
     local exit_code=$?
     local line_no=$1
@@ -14,64 +13,62 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# ✅ 环境检测：是否已由本脚本安装
 FLAG_FILE="/etc/autowp_env_initialized"
 
+# ✅ 环境判断
 function check_if_clean_env() {
+    echo "[🔍] 检查环境是否由脚本初始化..."
     if [[ -f "$FLAG_FILE" ]]; then
-        echo "[ℹ️] 检测到这是本系统脚本初始化的环境，继续执行"
+        echo "[✓] 脚本初始化环境，继续"
         return
     fi
 
-    echo "[🔍] 检测是否为非本系统脚本初始化的环境..."
     if command -v docker &>/dev/null || docker network ls | grep -q caddy_net; then
-        echo "[⚠️] 检测到系统已有 docker / caddy_net，但未检测到脚本标记文件"
-        read -p "❗这可能是非本脚本创建的环境，是否强制继续？(y/N): " force_confirm
-        if [[ "$force_confirm" != "y" && "$force_confirm" != "Y" ]]; then
-            echo "[-] 已取消安装操作"
-            exit 1
-        fi
+        echo "[⚠️] 检测到系统已有 Docker 或 caddy_net，但缺少初始化标志"
+        read -p "❗可能不是由本脚本部署的环境，是否强制继续？(y/N): " force_confirm
+        [[ "$force_confirm" =~ ^[Yy]$ ]] || { echo "[-] 已取消安装"; exit 1; }
     fi
 }
 
+# ✅ 安装必要依赖
 function install_dependencies() {
-    echo "[📦] 安装必要依赖 (docker、curl、unzip 等)"
+    echo "[📦] 安装依赖：docker, curl, unzip, jq 等..."
     apt update
     apt install -y docker.io docker-compose curl unzip lsof jq
     systemctl enable docker
     systemctl start docker
 }
 
+# ✅ 初始化环境
 function run_init_env() {
-    echo "[🚀] 执行 init_env.sh 初始化环境..."
+    echo "[🚀] 初始化环境 init_env.sh ..."
     curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/init_env.sh | bash
-    touch "$FLAG_FILE"
-    echo "[✅] 初始化完成标记已写入 $FLAG_FILE"
 }
 
-function wait_for_caddy_network() {
-    echo "[🕒] 等待 Docker 网络 caddy_net 建立..."
+# ✅ 等待 Docker 网络
+function wait_for_network() {
+    echo "[🕒] 等待网络 caddy_net 创建..."
     for i in {1..5}; do
         if docker network ls | grep -q caddy_net; then
-            echo "[√] Docker 网络 caddy_net 已检测到"
+            echo "[✓] 网络 caddy_net 可用"
             return
         fi
-        sleep 2
+        sleep 1
     done
-
-    echo "[❌] caddy_net 创建失败，请手动检查或稍后重试"
+    echo "[❌] 网络 caddy_net 创建失败，请检查"
     exit 1
 }
 
-function run_main() {
-    echo "[🎮] 拉取并启动主菜单..."
+# ✅ 启动主菜单
+function run_main_menu() {
+    echo "[🎮] 启动主菜单..."
     curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/main.sh -o ~/main.sh
     chmod +x ~/main.sh && ~/main.sh
 }
 
-# 🔧 主流程
+# === 主流程 ===
 check_if_clean_env
 install_dependencies
 run_init_env
-wait_for_caddy_network
-run_main
+wait_for_network
+run_main_menu
