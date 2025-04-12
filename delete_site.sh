@@ -1,67 +1,79 @@
 #!/bin/bash
+
 set -Eeuo pipefail
 
-# ==== 路径设置 ====
+function error_handler() {
+    local exit_code=$?
+    local line_no=$1
+    local cmd=$2
+    echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
+    echo "[🧭] 出错行号：$line_no"
+    echo "[💥] 出错命令：$cmd"
+    exit $exit_code
+}
+trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
+
 WEB_BASE="/home/dockerdata/docker_web"
 CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
-CADDY_CONTAINER="caddy-proxy"
 
-# ==== 检查已部署站点 ====
-echo "[🔍] 正在查找已部署的站点..."
-sites=($(ls "$WEB_BASE"))
-if [[ ${#sites[@]} -eq 0 ]]; then
-    echo "[-] 没有找到任何已部署的站点。"
-    exit 0
-fi
-
-# ==== 选择要删除的站点 ====
-echo "请选择要删除的站点："
-select sitename in "${sites[@]}" "退出"; do
-    if [[ "$REPLY" -ge 1 && "$REPLY" -le ${#sites[@]} ]]; then
-        break
-    elif [[ "$REPLY" == $(( ${#sites[@]} + 1 )) ]]; then
-        echo "已取消"
-        exit 0
-    else
-        echo "无效选择，请重试"
+# ==== 删除站点 ====
+delete_site() {
+    echo "[📂] 可用站点列表："
+    mapfile -t sites < <(ls -1 "$WEB_BASE" | grep -v '^config$')
+    if [[ ${#sites[@]} -eq 0 ]]; then
+        echo "[!] 无可删除的站点"
+        return
     fi
-done
 
-site_dir="$WEB_BASE/$sitename"
-domain=$(grep -Po '^\s*\K[^ ]+(?= \{)' "$CADDYFILE" | grep -i "$sitename" || true)
+    for i in "${!sites[@]}"; do
+        printf "%d) %s\n" $((i+1)) "${sites[$i]}"
+    done
+    echo "$(( ${#sites[@]} + 1 ))) 取消"
 
-echo -e "\n[⚠️] 即将删除站点：$sitename"
-echo "🗂️ 路径：$site_dir"
-[[ -n "$domain" ]] && echo "🌐 域名：$domain"
-read -p "确认删除？(y/N): " confirm
-[[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "已取消操作。" && exit 0
+    read -p "#? " choice
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#sites[@]} + 1 )); then
+        echo "[!] 选择无效"
+        return
+    elif (( choice == ${#sites[@]} + 1 )); then
+        echo "[-] 已取消"
+        return
+    fi
 
-# ==== 停止并删除容器 ====
-echo "[🛑] 停止并移除容器..."
-docker compose -f "$site_dir/docker-compose.yml" down || true
+    sitename="${sites[$((choice - 1))]}"
+    domain_guess=$(echo "$sitename" | sed 's/_/./g')
 
-# ==== 删除站点目录 ====
-echo "[🧹] 删除目录 $site_dir ..."
-rm -rf "$site_dir"
+    echo -e "\n⚠️ 即将删除站点：$sitename"
+    echo "📌 删除内容包括："
+    echo "  - WordPress 容器 wp-$sitename"
+    echo "  - MySQL 容器 db-$sitename"
+    echo "  - 文件目录 $WEB_BASE/$sitename"
+    echo "  - Caddy 配置中对应域名 $domain_guess"
 
-# ==== 删除 Caddy 配置 ====
-if [[ -n "$domain" ]]; then
-    echo "[✂️] 清理 Caddy 配置中与 $domain 相关的段落..."
-    tmp_file=$(mktemp)
-    awk -v target="$domain" '
-        BEGIN { skip = 0 }
-        $0 ~ "^" target "[ \t]*\\{" { skip = 1; next }
-        skip && $0 ~ /^[ \t]*\}/ { skip = 0; next }
-        !skip { print }
-    ' "$CADDYFILE" > "$tmp_file" && mv "$tmp_file" "$CADDYFILE"
-else
-    echo "[i] 未在 Caddyfile 中找到匹配域名配置，跳过清理"
-fi
+    read -p "确认继续删除该站点及其所有数据？(y/N): " confirm
+    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消" && return
 
-# ==== 重载 Caddy ====
-echo "[🔄] 重载 Caddy 配置..."
-docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
-    echo "[⚠️] Caddy 重载失败，请手动检查配置。"
+    echo "[🧹] 停止并删除容器..."
+    docker rm -f "wp-$sitename" "db-$sitename" 2>/dev/null || true
+
+    echo "[🗑️] 删除站点目录..."
+    rm -rf "$WEB_BASE/$sitename"
+
+    echo "[🧾] 移除 Caddy 配置..."
+    escaped_domain=$(printf '%s\n' "$domain_guess" | sed 's/[][\.*^$/]/\\&/g')
+    sed -i "/^$escaped_domain {/,/^}/d" "$CADDYFILE"
+
+    echo "[♻️] 重载 Caddy..."
+    docker exec caddy-proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
+        echo "[❌] Caddy reload 失败，请手动检查配置"
+    }
+
+    echo "[✅] 站点 $sitename 删除完成"
 }
 
-echo -e "\n[✅] 删除完成，站点 $sitename 已彻底清除。"
+# 主入口
+if [[ "${1:-}" == "site" ]]; then
+    delete_site
+else
+    echo "用法: $0 site"
+    exit 1
+fi
