@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-# === 错误追踪 ===
+# === 错误追踪机制 ===
 function error_handler() {
     local exit_code=$?
     local line_no=$1
@@ -15,10 +15,25 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# === 主菜单 ===
+# === LOGO ===
+function show_logo() {
+cat <<'EOF'
+ _      ______  ____  _        ____  _____  
+| |    |  ____|/ __ \| |      |  _ \|  __ \ 
+| |    | |__  | |  | | |      | |_) | |  | |
+| |    |  __| | |  | | |      |  _ <| |  | |
+| |____| |____| |__| | |____  | |_) | |__| |
+|______|______|\____/|______| |____/|_____/ 
+              L E O L A B                
+EOF
+}
+
+# === 主菜单函数 ===
 function main_menu() {
     while true; do
         clear
+        show_logo
+        echo
         echo "🧩 WordPress 多站部署管理"
         echo "----------------------------------------"
         echo "1) 创建新站点"
@@ -75,4 +90,5 @@ function main_menu() {
     done
 }
 
+# === 启动主菜单 ===
 main_menu
