@@ -20,8 +20,8 @@ CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
 CADDY_NET="caddy_net"
 
 # ==== 输入域名 ====
-echo "[+] 请输入域名（如 dj1.example.com）:"
-read -r domain
+clear
+read -ep "[+] 请输入域名（如 dj1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 0
 
 # ==== 检查域名解析 ====
