@@ -43,6 +43,7 @@ function main_menu() {
         echo "5) 设置快捷启动命令"
         echo "6) 卸载 Web 多站部署系统"
         echo "7) 创建独角数卡站点"
+        echo "8) 重启 Caddy 容器"
         echo "0) 退出"
         echo "----------------------------------------"
         read -p "请选择操作: " choice
@@ -84,6 +85,11 @@ function main_menu() {
                 chmod +x dujiaoka.sh && ./dujiaoka.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
+            8)
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/restart_caddy.sh -o restart_caddy.sh
+                chmod +x restart_caddy.sh && ./restart_caddy.sh
+                read -p "[按 Enter 回车返回主菜单]" dummy
+                ;;            
             0)
                 echo "[👋] 已退出"
                 exit 0
