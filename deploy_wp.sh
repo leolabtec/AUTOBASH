@@ -48,6 +48,8 @@ mkdir -p "$site_dir/html"
 
 echo "[*] 下载并解压 WordPress..."
 curl -sL https://cn.wordpress.org/latest-zh_CN.tar.gz | tar -xz -C "$site_dir/html" --strip-components=1
+# 设置 WordPress 文件夹权限（确保插件、上传等正常）
+chown -R 33:33 "$site_dir/html"
 
 echo "[*] 写入 .env 配置"
 cat > "$site_dir/.env" <<EOF
