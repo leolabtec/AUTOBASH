@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -Eeuo pipefail
 
 # ==== 错误处理 ====
@@ -14,25 +13,15 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# ==== 检测 docker compose 命令 ====
-if docker compose version &>/dev/null; then
-    COMPOSE_CMD="docker compose"
-elif docker-compose version &>/dev/null; then
-    COMPOSE_CMD="docker-compose"
-else
-    echo "[❌] 未检测到 docker compose 或 docker-compose，请先安装"
-    exit 1
-fi
-
 # ==== 路径设置 ====
 WEB_BASE="/home/dockerdata/docker_web"
 CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
 UPLOADS_INI="/home/size/uploads.ini"
 CADDY_NET="caddy_net"
 
-# ==== 确保 uploads.ini 存在 ====
+# ==== 检查 uploads.ini 是否存在 ====
 if [[ ! -f "$UPLOADS_INI" ]]; then
-    echo "[*] uploads.ini 未找到，自动创建中..."
+    echo "[*] 创建 PHP 上传配置 uploads.ini..."
     mkdir -p "$(dirname "$UPLOADS_INI")"
     cat > "$UPLOADS_INI" <<EOF
 upload_max_filesize = 64M
@@ -41,11 +30,11 @@ memory_limit = 128M
 EOF
 fi
 
-# ==== 读取域名 ====
+# ==== 输入域名 ====
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 0
 
-# ==== 检查域名是否解析到本机公网 IP ====
+# ==== 检查域名解析 ====
 echo "[🌐] 检查域名解析..."
 public_ip=$(curl -s https://api.ipify.org || curl -s https://ifconfig.me)
 resolved_ip=$(dig +short "$domain" | tail -n1)
@@ -56,6 +45,7 @@ if [[ "$resolved_ip" != "$public_ip" ]]; then
     read -p "❗域名未正确解析，是否仍要继续部署？(y/N): " proceed
     if [[ "$proceed" != "y" && "$proceed" != "Y" ]]; then
         echo "[-] 已取消部署"
+        read -p "[按 Enter 回车返回主菜单]"
         exit 0
     fi
 else
@@ -70,6 +60,7 @@ site_dir="$WEB_BASE/$sitename"
 if [[ -d "$site_dir" ]]; then
     echo "[🚫] 检测到站点目录已存在：$site_dir"
     echo "请先删除旧站点或更换其他域名后重试"
+    read -p "[按 Enter 回车返回主菜单]"
     exit 0
 fi
 
@@ -97,7 +88,7 @@ DB_PASS=$db_pass
 DB_ROOT=$db_root
 EOF
 
-# ==== 写入 docker-compose.yml ====
+# ==== 生成 docker-compose.yml ====
 echo "[*] 生成 docker-compose.yml..."
 cat > "$site_dir/docker-compose.yml" <<EOF
 version: '3.8'
@@ -140,9 +131,19 @@ networks:
     external: true
 EOF
 
+# ==== 检测 docker compose 命令 ====
+if docker compose version &>/dev/null; then
+    COMPOSE_CMD=(docker compose)
+elif docker-compose version &>/dev/null; then
+    COMPOSE_CMD=(docker-compose)
+else
+    echo "[❌] 未检测到 docker compose 或 docker-compose"
+    exit 1
+fi
+
 # ==== 启动容器 ====
 echo "[*] 启动服务容器..."
-(cd "$site_dir" && $COMPOSE_CMD up -d)
+( cd "$site_dir" && "${COMPOSE_CMD[@]}" up -d )
 
 # ==== 写入 Caddy 配置 ====
 echo "[*] 写入 Caddy 配置..."
@@ -153,7 +154,7 @@ $domain {
 }
 EOF
 
-# ==== 重载 Caddy 配置 ====
+# ==== 重载 Caddy ====
 echo "[*] 重载 Caddy..."
 docker exec caddy-proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
     echo "[❌] Caddy reload 失败，请手动检查配置"
@@ -170,3 +171,4 @@ echo "🔑 密码: $db_pass"
 echo "🔐 Root 密码: $db_root"
 echo "📂 路径: $site_dir"
 echo "----------------------------------------------"
+read -p "[按 Enter 回车返回主菜单]"
