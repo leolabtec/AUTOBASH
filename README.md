@@ -1,2 +1,2 @@
-# Autobuild_openwrt
-Auto build openwrt image
+# AUTO BASH 
+Auto install more wordpress 
