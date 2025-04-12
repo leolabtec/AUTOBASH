@@ -46,6 +46,7 @@ function main_menu() {
         echo "8) 重启 Caddy 容器"
         echo "9) 热更新Caddy 配置"
         echo "10) 一键备份所有容器和脚本"
+        echo "11) 一键更新所有脚本代码"
         echo "0) 退出"
         echo "----------------------------------------"
         read -p "请选择操作: " choice
@@ -100,6 +101,12 @@ function main_menu() {
             10)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/all_backup.sh -o all_backup.sh
                 chmod +x all_backup.sh && ./all_backup.sh
+                read -p "[按 Enter 回车返回主菜单]" dummy
+                ;;
+            11)
+                echo "[🌐] 正在更新所有脚本..."
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/update_all.sh -o update_all.sh
+                chmod +x update_all.sh && ./update_all.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             0)
