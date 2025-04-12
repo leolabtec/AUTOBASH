@@ -43,38 +43,45 @@ function install_dependencies() {
     fi
 
     if [[ "$os" != "debian" && "$os" != "ubuntu" ]]; then
-        echo "[❌] 当前系统为 $os，本脚本仅支持 Debian 或 Ubuntu"
-        read -p "按 Enter 回车退出..." && exit 1
+        echo "[❌] 当前系统不是 Debian/Ubuntu，终止安装"
+        exit 1
     fi
 
-    echo "[✅] 系统类型: $os，开始安装依赖..."
+    echo ""
+    echo "[❓] 是否重新安装所有依赖？"
+    echo "    y = 强制重新安装全部依赖（包括已安装的）"
+    echo "    n = 跳过已安装的，仅安装缺失部分"
+    read -rp "[👉] 请输入选择 (y/n): " reinstall_all
 
-    declare -A packages=(
-        [docker.io]="Docker"
-        [docker-compose]="Docker Compose"
-        [curl]="cURL"
-        [unzip]="Unzip"
-        [lsof]="lsof"
-        [jq]="jq"
-    )
+    function install_if_missing() {
+        local name=$1
+        local check_cmd=$2
+        local install_cmd=$3
 
+        if [[ "$reinstall_all" =~ ^[Yy]$ ]]; then
+            echo "[🔁] 正在安装 $name（强制模式）..."
+            eval "$install_cmd"
+        else
+            if eval "$check_cmd" &>/dev/null; then
+                echo "[✅] $name 已安装，跳过"
+            else
+                echo "[📥] 检测到 $name 未安装，正在安装..."
+                eval "$install_cmd"
+            fi
+        fi
+    }
+
+    # 更新 apt 缓存
     apt update -y
 
-    for pkg in "${!packages[@]}"; do
-        if dpkg -s "$pkg" &>/dev/null; then
-            echo "[✔️] ${packages[$pkg]} ($pkg) 已安装"
-            read -rp "[↪️] 是否跳过该组件安装？(默认: 是, n=重新安装): " skip
-            [[ "$skip" == "n" || "$skip" == "N" ]] || continue
-        fi
-        echo "[⬇️] 正在安装 ${packages[$pkg]}..."
-        apt install -y "$pkg"
-    done
+    # Docker
+    install_if_missing "Docker" "command -v docker" "apt install -y docker.io"
 
-    echo "[🛠️] 设置 Docker 开机自启并启动服务..."
-    systemctl enable docker
-    systemctl restart docker
+    # Docker Compose
+    install_if_missing "Docker Compose" "command -v docker-compose" "apt install -y docker-compose"
 
-    echo -e "\n[✅] 所有依赖处理完成！"
+    # Caddy（可选示例）
+    # install_if_missing "Caddy" "command -v caddy" "apt install -y caddy"
 }
 # ✅ 初始化环境
 function run_init_env() {
