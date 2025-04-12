@@ -35,6 +35,23 @@ fi
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
 
+# ==== 标准化站点名 ====
+sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
+site_dir="$WEB_BASE/$sitename"
+
+# ==== 检查是否已部署 ====
+if [[ -d "$site_dir" ]]; then
+    echo "[🚫] 已存在站点目录：$site_dir"
+    echo "请删除旧站点或更换域名后再部署"
+    exit 1
+fi
+
+if docker ps -a --format '{{.Names}}' | grep -q -E "wp-$sitename|db-$sitename"; then
+    echo "[🚫] 已存在容器 wp-$sitename 或 db-$sitename"
+    echo "请先删除旧容器或使用新域名"
+    exit 1
+fi
+
 # ==== 检查域名是否解析到本机公网 IP ====
 echo "[🌐] 检查域名解析..."
 public_ip=$(curl -s https://api.ipify.org || curl -s https://ifconfig.me)
@@ -47,23 +64,6 @@ if [[ "$resolved_ip" != "$public_ip" ]]; then
     [[ "$proceed" != "y" && "$proceed" != "Y" ]] && echo "[-] 已取消部署" && exit 1
 else
     echo "[✅] 域名已正确解析到本机"
-fi
-
-# ==== 标准化站点名 ====
-sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
-site_dir="$WEB_BASE/$sitename"
-
-# ==== 检查是否重复部署 ====
-if [[ -d "$site_dir" ]]; then
-    echo "[🚫] 已存在站点目录：$site_dir"
-    echo "请删除旧站点或更换域名后再部署"
-    exit 1
-fi
-
-if docker ps -a --format '{{.Names}}' | grep -q -E "wp-$sitename|db-$sitename"; then
-    echo "[🚫] 已存在容器 wp-$sitename 或 db-$sitename"
-    echo "请先删除旧容器或使用新域名"
-    exit 1
 fi
 
 # ==== 数据库配置 ====
@@ -79,7 +79,7 @@ mkdir -p "$site_dir/html" "$site_dir/db"
 # ==== 下载 WordPress ====
 echo "[*] 下载并解压 WordPress..."
 curl -sL https://cn.wordpress.org/latest-zh_CN.tar.gz | tar -xz -C "$site_dir/html" --strip-components=1
-chown -R 33:33 "$site_dir/html"  # 确保 Apache 用户可写
+chown -R 33:33 "$site_dir/html"
 
 # ==== 写入 .env 文件 ====
 echo "[*] 写入 .env 配置..."
