@@ -19,12 +19,16 @@ FLAG_FILE="/etc/autowp_env_initialized"
 
 function check_if_clean_env() {
     if [[ -f "$FLAG_FILE" ]]; then
-        echo "[ℹ️] 检测到这是已初始化的环境，跳过环境部署"
-    else
-        echo "[🔍] 检测是否为干净系统环境..."
-        if command -v docker &>/dev/null || docker network ls | grep -q caddy_net; then
-            echo "[⚠️] 检测到系统已有 docker / caddy_net，可能不是由本系统初始化"
-            echo "[❌] 请勿在已有环境中强行覆盖安装，建议手动检查"
+        echo "[ℹ️] 检测到这是本系统脚本初始化的环境，继续执行"
+        return
+    fi
+
+    echo "[🔍] 检测是否为非本系统脚本初始化的环境..."
+    if command -v docker &>/dev/null || docker network ls | grep -q caddy_net; then
+        echo "[⚠️] 检测到系统已有 docker / caddy_net，但未检测到脚本标记文件"
+        read -p "❗这可能是非本脚本创建的环境，是否强制继续？(y/N): " force_confirm
+        if [[ "$force_confirm" != "y" && "$force_confirm" != "Y" ]]; then
+            echo "[-] 已取消安装操作"
             exit 1
         fi
     fi
