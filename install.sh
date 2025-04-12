@@ -30,15 +30,52 @@ function check_if_clean_env() {
     fi
 }
 
-# ✅ 安装必要依赖
+# ✅ 安装必要依赖（仅支持 Debian/Ubuntu）
 function install_dependencies() {
-    echo "[📦] 安装依赖：docker, curl, unzip, jq 等..."
-    apt update
-    apt install -y docker.io docker-compose curl unzip lsof jq
-    systemctl enable docker
-    systemctl start docker
-}
+    echo "[📦] 检测系统环境..."
 
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        os=$ID
+    else
+        echo "[❌] 无法识别系统类型，终止安装"
+        exit 1
+    fi
+
+    if [[ "$os" != "debian" && "$os" != "ubuntu" ]]; then
+        echo "[❌] 当前系统为 $os，本脚本仅支持 Debian 或 Ubuntu"
+        read -p "按 Enter 回车退出..." && exit 1
+    fi
+
+    echo "[✅] 系统类型: $os，开始安装依赖..."
+
+    declare -A packages=(
+        [docker.io]="Docker"
+        [docker-compose]="Docker Compose"
+        [curl]="cURL"
+        [unzip]="Unzip"
+        [lsof]="lsof"
+        [jq]="jq"
+    )
+
+    apt update -y
+
+    for pkg in "${!packages[@]}"; do
+        if dpkg -s "$pkg" &>/dev/null; then
+            echo "[✔️] ${packages[$pkg]} ($pkg) 已安装"
+            read -rp "[↪️] 是否跳过该组件安装？(默认: 是, n=重新安装): " skip
+            [[ "$skip" == "n" || "$skip" == "N" ]] || continue
+        fi
+        echo "[⬇️] 正在安装 ${packages[$pkg]}..."
+        apt install -y "$pkg"
+    done
+
+    echo "[🛠️] 设置 Docker 开机自启并启动服务..."
+    systemctl enable docker
+    systemctl restart docker
+
+    echo -e "\n[✅] 所有依赖处理完成！"
+}
 # ✅ 初始化环境
 function run_init_env() {
     echo "[🚀] 初始化环境 init_env.sh ..."
