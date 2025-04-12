@@ -1,15 +1,18 @@
 #!/bin/bash
-
 set -Eeuo pipefail
 
 # ==== 错误处理 ====
+SKIP_ERROR_HANDLER=false
 function error_handler() {
     local exit_code=$?
     local line_no=$1
     local cmd=$2
-    echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
-    echo "[🧭] 出错行号：$line_no"
-    echo "[💥] 出错命令：$cmd"
+    if [[ "$SKIP_ERROR_HANDLER" != true ]]; then
+        echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
+        echo "[🧭] 出错行号：$line_no"
+        echo "[💥] 出错命令：$cmd"
+        echo "[📌] 脚本路径：$(realpath "$0")"
+    fi
     exit $exit_code
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
@@ -35,25 +38,6 @@ fi
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
 
-# ==== 标准化站点名 ====
-sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
-site_dir="$WEB_BASE/$sitename"
-
-# ==== 检查是否已部署 ====
-if [[ -d "$site_dir" ]]; then
-    echo -e "\n[🚫] 检测到该域名对应的站点已存在："
-    echo "📂 路径: $site_dir"
-    echo -e "👉 请先删除旧站点，或使用新的域名后重试。\n"
-    read -p "[按 Enter 回车返回主菜单]" dummy
-    exit 0
-fi
-
-if docker ps -a --format '{{.Names}}' | grep -q -E "wp-$sitename|db-$sitename"; then
-    echo "[🚫] 已存在容器 wp-$sitename 或 db-$sitename"
-    echo "请先删除旧容器或使用新域名"
-    exit 1
-fi
-
 # ==== 检查域名是否解析到本机公网 IP ====
 echo "[🌐] 检查域名解析..."
 public_ip=$(curl -s https://api.ipify.org || curl -s https://ifconfig.me)
@@ -66,10 +50,23 @@ if [[ "$resolved_ip" != "$public_ip" ]]; then
     if [[ "$proceed" != "y" && "$proceed" != "Y" ]]; then
         echo "[-] 已取消部署"
         read -p "[按 Enter 回车返回主菜单]" dummy
+        SKIP_ERROR_HANDLER=true
         exit 0
     fi
 else
     echo "[✅] 域名已正确解析到本机"
+fi
+
+# ==== 标准化站点名 ====
+sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
+site_dir="$WEB_BASE/$sitename"
+
+# ==== 检查是否已部署 ====
+if [[ -d "$site_dir" ]]; then
+    echo "[🚫] 站点 $domain 已部署（路径：$site_dir）"
+    echo "➡️  请先删除该站点或更换域名后再部署"
+    SKIP_ERROR_HANDLER=true
+    exit 0
 fi
 
 # ==== 数据库配置 ====
@@ -169,3 +166,4 @@ echo "🔑 密码: $db_pass"
 echo "🔐 Root 密码: $db_root"
 echo "📂 路径: $site_dir"
 echo "----------------------------------------------"
+read -p "[按 Enter 回车返回主菜单]" dummy
