@@ -1,44 +1,46 @@
 #!/bin/bash
-
 set -Eeuo pipefail
 
+# ✅ 错误追踪机制
 function error_handler() {
-    echo -e "\n[❌] 卸载失败，退出码： $?"
-    echo "[🧭] 出错行号： $1"
-    echo "[💥] 出错命令： $2"
-    exit 1
+    local exit_code=$?
+    local line_no=$1
+    local cmd=$2
+    echo -e "\n[❌] 卸载失败，退出码：$exit_code"
+    echo "[🧭] 出错行号：$line_no"
+    echo "[💥] 出错命令：$cmd"
+    exit $exit_code
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-read -p "⚠️  确认要卸载整个 WordPress 多站部署环境？这将删除容器、数据、配置等（y/N）: " confirm
-if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-    echo "[-] 已取消卸载操作"
-    exit 0
-fi
+# ✅ 路径定义
+WEB_DIR="/home/dockerdata/docker_web"
+CADDY_DIR="/home/dockerdata/docker_caddy"
+CADDYFILE="$CADDY_DIR/Caddyfile"
+FLAG_FILE="/etc/autowp_env_initialized"
 
-# 停止并删除所有相关容器
+echo -e "⚠️  确认要卸载整个 WordPress 多站部署环境？这将删除容器、数据、配置等（y/N）: \c"
+read confirm
+[[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消卸载" && exit 0
+
+# ✅ 停止 Caddy
 echo "[*] 停止并删除 Caddy 容器..."
 docker rm -f caddy-proxy 2>/dev/null || true
 
+# ✅ 删除所有 WordPress & 数据库容器
 echo "[*] 删除所有 WordPress/MySQL 容器..."
-wp_db_containers=$(docker ps -a --format '{{.Names}}' | grep '^wp-' || true)
-wp_db_containers+=$'\n'$(docker ps -a --format '{{.Names}}' | grep '^db-' || true)
-
-for cname in $wp_db_containers; do
-    docker rm -f "$cname" || true
+containers=$(docker ps -a --format '{{.Names}}' | grep -E '^wp-|^db-' || true)
+for cname in $containers; do
+    docker rm -f "$cname" || echo "[!] 容器 $cname 删除失败"
 done
 
-# 删除 docker 网络
-if docker network ls | grep -q caddy_net; then
-    echo "[*] 删除 docker 网络 caddy_net"
-    docker network rm caddy_net
-fi
+# ✅ 删除数据目录
+echo "[*] 删除站点目录与 Caddy 配置..."
+rm -rf "$WEB_DIR"
+rm -rf "$CADDY_DIR"
 
-# 删除挂载数据目录
-echo "[*] 删除数据目录 /home/dockerdata ..."
-rm -rf /home/dockerdata
+# ✅ 删除初始化标志
+echo "[*] 删除初始化标记文件..."
+rm -f "$FLAG_FILE"
 
-# 删除初始化标记
-rm -f /etc/autowp_env_initialized
-
-echo -e "\n[✅] 卸载完成，系统已恢复为干净状态"
+echo -e "\n[✅] WordPress 多站部署环境已彻底卸载"
