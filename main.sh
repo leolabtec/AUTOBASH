@@ -34,7 +34,7 @@ function main_menu() {
         clear
         show_logo
         echo
-        echo "🧩 WordPress 多站部署管理"
+        echo "🌐 WEB 多站部署管理 - 创建 WordPress 新站点"
         echo "----------------------------------------"
         echo "1) 创建新站点"
         echo "2) 查看已部署站点"
@@ -42,6 +42,7 @@ function main_menu() {
         echo "4) 删除站点（包含数据库与配置）"
         echo "5) 设置快捷启动命令"
         echo "6) 卸载 Web 多站部署系统"
+        echo "7) 创建独角数卡站点"
         echo "0) 退出"
         echo "----------------------------------------"
         read -p "请选择操作: " choice
@@ -76,6 +77,11 @@ function main_menu() {
                 echo "[⚠️] 即将运行卸载脚本 uninstall.sh..."
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/uninstall.sh -o uninstall.sh
                 chmod +x uninstall.sh && ./uninstall.sh
+                read -p "[按 Enter 回车返回主菜单]" dummy
+                ;;
+            7)
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/dujiaoka.sh -o dujiaoka.sh
+                chmod +x dujiaoka.sh && ./dujiaoka.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             0)
