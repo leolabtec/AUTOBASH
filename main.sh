@@ -20,6 +20,29 @@ WEB_DIR="/home/dockerdata/docker_web"
 CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
 RAW_DEPLOY_URL="https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/refs/heads/main/deploy_wp.sh"
 
+# ✅ 环境检测：确保已初始化环境
+function check_env_ready() {
+    if ! command -v docker &>/dev/null; then
+        echo "[🚫] Docker 未安装，可能未执行 init_env.sh"
+        exit 1
+    fi
+
+    if ! docker network ls | grep -q caddy_net; then
+        echo "[🚫] Docker 网络 caddy_net 不存在，请先运行 init_env.sh"
+        exit 1
+    fi
+
+    if ! docker ps | grep -q caddy-proxy; then
+        echo "[🚫] Caddy 容器未运行，环境不完整"
+        exit 1
+    fi
+
+    if [ ! -d "$WEB_DIR" ] || [ ! -d "/home/dockerdata/docker_caddy" ]; then
+        echo "[🚫] 必要目录缺失，请先运行 init_env.sh"
+        exit 1
+    fi
+}
+
 function list_sites() {
     echo -e "\n[🌐] 已部署站点列表："
     ls -1 "$WEB_DIR"
@@ -90,4 +113,5 @@ function main_menu() {
     main_menu
 }
 
+check_env_ready
 main_menu
