@@ -30,7 +30,7 @@ function main_menu() {
         echo -n "请选择操作: "
         read choice
 
-        case $choice in
+                case $choice in
             1)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/deploy_wp.sh -o deploy_wp.sh
                 chmod +x deploy_wp.sh && ./deploy_wp.sh
@@ -49,13 +49,13 @@ function main_menu() {
                 chmod +x delete_site.sh && ./delete_site.sh site
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
-            6)
+            5)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/set_shortcut.sh -o set_shortcut.sh
                 chmod +x set_shortcut.sh && ./set_shortcut.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             0)
-                echo "[🚪] 已退出"
+                echo "退出"
                 exit 0
                 ;;
             *)
