@@ -35,20 +35,24 @@ fi
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 0
 
-# ==== 检查域名解析 ====
+# ==== 检查域名是否解析到本机公网 IP（A 或 AAAA）====
 echo "[🌐] 检查域名解析..."
 public_ip=$(curl -s https://api.ipify.org || curl -s https://ifconfig.me)
-resolved_ip=$(dig +short "$domain" | tail -n1)
+resolved_a=$(dig +short A "$domain" | tail -n1)
+resolved_aaaa=$(dig +short AAAA "$domain" | tail -n1)
 
-if [[ "$resolved_ip" != "$public_ip" ]]; then
-    echo "[⚠️] 警告：域名 $domain 当前解析到 $resolved_ip"
-    echo "[💡] 本机公网 IP 为 $public_ip"
-    read -p "❗域名未正确解析，是否仍要继续部署？(y/N): " proceed
-    if [[ "$proceed" != "y" && "$proceed" != "Y" ]]; then
-        echo "[-] 已取消部署"
-        read -p "[按 Enter 回车返回主菜单]"
-        exit 0
-    fi
+if [[ -z "$resolved_a" && -z "$resolved_aaaa" ]]; then
+    echo "[❌] 域名未解析：未找到 A 或 AAAA 记录"
+    echo "[💡] 请前往 DNS 服务商设置解析记录，确保域名指向公网 IP：$public_ip"
+    echo "   - 示例记录：w2.9333.network A $public_ip"
+    echo "   - 或 AAAA 记录用于 IPv6 环境"
+    read -p "是否仍要强制继续部署？(y/N): " force_continue
+    [[ "$force_continue" != "y" && "$force_continue" != "Y" ]] && echo "[-] 已取消部署" && read -p "[按 Enter 返回]" && exit 0
+else
+    echo "[✅] 已检测到解析记录："
+    [[ -n "$resolved_a" ]] && echo "    A 记录 ➜ $resolved_a"
+    [[ -n "$resolved_aaaa" ]] && echo "    AAAA 记录 ➜ $resolved_aaaa"
+fi
 else
     echo "[✅] 域名已正确解析到本机"
 fi
