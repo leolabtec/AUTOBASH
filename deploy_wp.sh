@@ -63,7 +63,11 @@ if [[ "$resolved_ip" != "$public_ip" ]]; then
     echo "[⚠️] 警告：域名 $domain 当前解析到 $resolved_ip"
     echo "[💡] 本机公网 IP 为 $public_ip"
     read -p "❗域名未正确解析，是否仍要继续部署？(y/N): " proceed
-    [[ "$proceed" != "y" && "$proceed" != "Y" ]] && echo "[-] 已取消部署" && exit 1
+    if [[ "$proceed" != "y" && "$proceed" != "Y" ]]; then
+        echo "[-] 已取消部署"
+        read -p "[按 Enter 回车返回主菜单]" dummy
+        exit 0
+    fi
 else
     echo "[✅] 域名已正确解析到本机"
 fi
