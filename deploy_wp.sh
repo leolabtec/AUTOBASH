@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# WordPress 单站点自动部署脚本
-# 使用 Docker + Docker Caddy
-
 set -Eeuo pipefail
 
+# ✅ 错误处理函数
 function error_handler() {
     local exit_code=$?
     local line_no=$1
@@ -15,120 +13,91 @@ function error_handler() {
     echo "[📌] 脚本路径：$(realpath "$0")"
     exit $exit_code
 }
-
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# 全局变量
-WEB_BASE="/home/dockerdata/docker_web"
-CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
-CADDY_NET="caddy_net"
-PORT_BASE=8080
+ROOT_DIR="/home/dockerdata"
+WEB_ROOT="$ROOT_DIR/docker_web"
+CADDY_DIR="$ROOT_DIR/docker_caddy"
+CADDYFILE="$CADDY_DIR/Caddyfile"
+UPLOAD_INI="/home/wordpress/uploads.ini"
 
-function find_next_port() {
-    used=$(docker ps --format '{{.Ports}}' | grep -o '[0-9]*->80' | cut -d: -f1)
-    for ((p=PORT_BASE; p<9000; p++)); do
-        if ! echo "$used" | grep -q "$p"; then
-            echo "$p"
-            return
-        fi
-    done
-}
+read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
+sitename=$(echo "$domain" | cut -d. -f1)
+sitedir="$WEB_ROOT/$sitename"
+dbname="wp_$sitename"
+dbuser="wpuser"
+dbpass=$(openssl rand -base64 12)
+rootpass=$(openssl rand -base64 16)
 
-function deploy_wp() {
-    read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
-    [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
+mkdir -p "$sitedir/html" "$sitedir/db-data"
 
-    sitename=$(echo "$domain" | cut -d. -f1)
-    site_dir="$WEB_BASE/$sitename"
-    port=$(find_next_port)
-    db_name="wp_${sitename}"
-    db_user="wpuser_${sitename}"
-    db_pass=$(openssl rand -base64 12)
-    db_root=$(openssl rand -base64 12)
+# 下载 WordPress 中文版
+curl -s -L https://cn.wordpress.org/latest-zh_CN.tar.gz -o "$sitedir/latest.tar.gz"
+tar -xf "$sitedir/latest.tar.gz" -C "$sitedir"
+mv "$sitedir/wordpress"/* "$sitedir/html/"
+rm -rf "$sitedir/wordpress" "$sitedir/latest.tar.gz"
 
-    echo "[*] 创建站点目录：$site_dir"
-    mkdir -p "$site_dir/html"
-
-    echo "[*] 下载 WordPress..."
-    curl -sL https://cn.wordpress.org/latest-zh_CN.tar.gz | tar -xz -C "$site_dir/html" --strip-components=1
-
-    echo "[*] 写入 .env 配置"
-    cat > "$site_dir/.env" <<EOF
-DB_NAME=$db_name
-DB_USER=$db_user
-DB_PASS=$db_pass
-DB_ROOT=$db_root
-EOF
-
-    echo "[*] 创建 docker-compose.yml"
-    cat > "$site_dir/docker-compose.yml" <<EOF
+# 写入 docker-compose.yml
+cat > "$sitedir/docker-compose.yml" <<EOF
 version: '3.8'
 services:
   wp-$sitename:
     image: wordpress:php8.2-apache
     container_name: wp-$sitename
-    env_file:
-      - .env
     environment:
       WORDPRESS_DB_HOST: db-$sitename
-      WORDPRESS_DB_NAME: \${DB_NAME}
-      WORDPRESS_DB_USER: \${DB_USER}
-      WORDPRESS_DB_PASSWORD: \${DB_PASS}
+      WORDPRESS_DB_NAME: $dbname
+      WORDPRESS_DB_USER: $dbuser
+      WORDPRESS_DB_PASSWORD: $dbpass
     volumes:
       - ./html:/var/www/html
-    ports:
-      - "$port:80"
-    restart: unless-stopped
+      - $UPLOAD_INI:/usr/local/etc/php/conf.d/uploads.ini
     networks:
-      - $CADDY_NET
+      caddy_net:
+        aliases:
+          - $sitename-frontend
+    restart: unless-stopped
 
   db-$sitename:
     image: mysql:8.0
     container_name: db-$sitename
-    env_file:
-      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: \${DB_ROOT}
-      MYSQL_DATABASE: \${DB_NAME}
-      MYSQL_USER: \${DB_USER}
-      MYSQL_PASSWORD: \${DB_PASS}
+      MYSQL_ROOT_PASSWORD: $rootpass
+      MYSQL_DATABASE: $dbname
+      MYSQL_USER: $dbuser
+      MYSQL_PASSWORD: $dbpass
     volumes:
-      - ./db:/var/lib/mysql
-    restart: unless-stopped
+      - ./db-data:/var/lib/mysql
     networks:
-      - $CADDY_NET
+      - caddy_net
+    restart: unless-stopped
 
 networks:
-  $CADDY_NET:
+  caddy_net:
     external: true
 EOF
 
-    echo "[*] 启动容器..."
-    (cd "$site_dir" && docker-compose up -d)
-
-    echo "[*] 写入 Caddy 配置..."
-    cat >> "$CADDYFILE" <<EOF
+# 写入 Caddy 配置
+cat >> "$CADDYFILE" <<EOF
 
 $domain {
-    reverse_proxy localhost:$port
+    reverse_proxy wp-$sitename:80
 }
 EOF
 
-    echo "[*] 重载 Caddy..."
-    docker exec caddy-proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
-        echo "[❌] Caddy reload 失败，请检查配置语法"
-        exit 1
-    }
+# 启动服务
+cd "$sitedir"
+docker-compose up -d
 
-    echo "\n[✅] 站点部署成功"
-    echo "----------------------------------------------"
-    echo "🌐 域名: https://$domain"
-    echo "🔐 数据库名: $db_name"
-    echo "👤 用户名: $db_user"
-    echo "🔑 密码: $db_pass"
-    echo "🔐 Root 密码: $db_root"
-    echo "📂 路径: $site_dir"
-    echo "----------------------------------------------"
-}
+# 重启 Caddy
+docker restart caddy-proxy
 
-deploy_wp
+# 输出部署信息
+echo -e "\n[✅] 部署完成！"
+echo "🌐 访问地址: https://$domain"
+echo "📂 站点目录: $sitedir"
+echo "🧰 数据库名: $dbname"
+echo "👤 数据库用户: $dbuser"
+echo "🔐 数据库密码: $dbpass"
+echo "🔐 Root 密码: $rootpass"
+echo
