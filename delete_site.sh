@@ -30,9 +30,9 @@ delete_site() {
         break
     done
 
-    domain_guess="$sitename.9333.network"
+    domain_guess=$(grep -r "wp-$sitename" "$CADDYFILE" | grep -oE "^.*\.\S+") || domain_guess="$sitename.unknown"
 
-    echo "⚠️ 即将删除站点：$sitename (域名猜测: $domain_guess)"
+    echo "⚠️ 即将删除站点：$sitename (域名推测: $domain_guess)"
     read -p "确认继续？(y/N): " confirm
     [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消" && return
 
