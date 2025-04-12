@@ -108,7 +108,7 @@ EOF
 
 # ==== 启动服务 ====
 echo "[*] 启动服务容器..."
-(cd "$site_dir" && docker compose up -d)
+(cd "$site_dir" && docker-compose up -d)
 
 # ==== 写入 Caddy 配置 ====
 echo "[*] 写入 Caddy 配置..."
