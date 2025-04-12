@@ -17,11 +17,14 @@ trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
 # ==== 设置路径 ====
 WEB_BASE="/home/dockerdata/docker_web"
+CONFIG_DIR="$WEB_BASE/config"
+UPLOADS_INI="$CONFIG_DIR/uploads.ini"
 CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
-UPLOADS_INI="$WEB_BASE/uploads.ini"
 CADDY_NET="caddy_net"
 
-# ==== 创建 uploads.ini ====
+# ==== 创建 config 目录及 uploads.ini 配置 ====
+mkdir -p "$CONFIG_DIR"
+
 if [[ ! -f "$UPLOADS_INI" ]]; then
     echo "[*] 生成 PHP 上传配置 uploads.ini"
     cat > "$UPLOADS_INI" <<EOF
