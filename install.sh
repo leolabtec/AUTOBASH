@@ -75,7 +75,7 @@ function install_dependencies() {
     apt update -y
 
     # Docker
-    install_if_missing "Docker" "command -v docker" "apt install -y docker.io"
+    install_if_missing "Docker" "command -v docker" "apt install -y docker.io" "apt install -y dnsutils"
 
     # Docker Compose
     install_if_missing "Docker Compose" "command -v docker-compose" "apt install -y docker-compose"
