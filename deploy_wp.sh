@@ -39,10 +39,16 @@ read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
 site_dir="$WEB_BASE/$sitename"
 
-# ==== 检查是否已部署 ====
+# ==== 检查是否重复部署 ====
 if [[ -d "$site_dir" ]]; then
-    echo "[🚫] 已存在站点目录：$site_dir"
-    echo "请删除旧站点或更换域名后再部署"
+    echo "[🚫] 检测到站点已存在：$site_dir"
+    echo "该域名似乎已用于部署过站点。"
+    echo ""
+    echo "📌 你可以选择以下方式继续："
+    echo "  1️⃣ 删除旧站点：请返回主菜单选择【4】删除该站点"
+    echo "  2️⃣ 更换新域名：请使用不同域名重新部署"
+    echo ""
+    echo "💡 提示：同一域名不可重复部署多个站点"
     exit 1
 fi
 
