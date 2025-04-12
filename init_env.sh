@@ -19,6 +19,9 @@ CADDY_DIR="$ROOT_DIR/docker_caddy"
 CADDYFILE="$CADDY_DIR/Caddyfile"
 FLAG_FILE="/etc/autowp_env_initialized"
 
+UPLOADS_DIR="/home/size"
+UPLOADS_INI="$UPLOADS_DIR/uploads.ini"
+
 # 创建必要目录
 mkdir -p "$WEB_DIR"
 mkdir -p "$CADDY_DIR"
@@ -26,7 +29,20 @@ mkdir -p "$CADDY_DIR"
 echo "[*] 创建目录成功"
 echo "[*] Caddyfile 路径: $CADDYFILE"
 
-# 创建空白 Caddyfile（仅首次）
+# 创建 uploads.ini（全局 PHP 上传限制配置）
+if [[ ! -f "$UPLOADS_INI" ]]; then
+    echo "[*] 创建 PHP 上传配置文件: $UPLOADS_INI"
+    mkdir -p "$UPLOADS_DIR"
+    cat > "$UPLOADS_INI" <<EOF
+upload_max_filesize = 64M
+post_max_size = 64M
+memory_limit = 128M
+EOF
+else
+    echo "[✓] 已存在 uploads.ini，跳过"
+fi
+
+# 初始化空白 Caddyfile（首次）
 if [[ ! -f "$CADDYFILE" ]]; then
     echo "[*] 初始化 Caddyfile"
     cat > "$CADDYFILE" <<EOF
@@ -62,7 +78,7 @@ else
     echo "[✓] Caddy 容器已在运行，跳过"
 fi
 
-# 写入标记文件
+# 写入初始化标记
 touch "$FLAG_FILE"
 echo "[✅] 初始化完成，标记写入 $FLAG_FILE"
 echo "[🎮] 可执行主菜单：./main.sh"
