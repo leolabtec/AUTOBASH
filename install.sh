@@ -45,6 +45,20 @@ function run_init_env() {
     echo "[✅] 初始化完成标记已写入 $FLAG_FILE"
 }
 
+function wait_for_caddy_network() {
+    echo "[🕒] 等待 Docker 网络 caddy_net 建立..."
+    for i in {1..5}; do
+        if docker network ls | grep -q caddy_net; then
+            echo "[√] Docker 网络 caddy_net 已检测到"
+            return
+        fi
+        sleep 2
+    done
+
+    echo "[❌] caddy_net 创建失败，请手动检查或稍后重试"
+    exit 1
+}
+
 function run_main() {
     echo "[🎮] 拉取并启动主菜单..."
     curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/main.sh -o ~/main.sh
@@ -55,4 +69,5 @@ function run_main() {
 check_if_clean_env
 install_dependencies
 run_init_env
+wait_for_caddy_network
 run_main
