@@ -47,7 +47,7 @@ function main_menu() {
         echo "9) 热更新Caddy 配置"
         echo "10) 一键备份所有容器和脚本"
         echo "11) 一键更新所有脚本代码"
-        echo "12) 创建 3x-ui 面板站点"
+        echo "12) 创建 3x-ui 面板站点 或进入控制台"
         echo "0) 退出"
         echo "----------------------------------------"
         read -p "请选择操作: " choice
@@ -93,12 +93,12 @@ function main_menu() {
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/restart_caddy.sh -o restart_caddy.sh
                 chmod +x restart_caddy.sh && ./restart_caddy.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
-                ;;            
+                ;;
             9)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/reload_caddy.sh -o reload_caddy.sh
                 chmod +x reload_caddy.sh && ./reload_caddy.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
-                ;;                    
+                ;;
             10)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/all_backup.sh -o all_backup.sh
                 chmod +x all_backup.sh && ./all_backup.sh
@@ -111,10 +111,17 @@ function main_menu() {
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             12)
-                echo "[🚀] 开始部署 3x-ui 面板..."
-                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/3x-ui.sh -o 3x-ui.sh
-                chmod +x 3x-ui.sh && ./3x-ui.sh
-                read -p "[按 Enter 回车返回主菜单]" dummy
+                if docker ps --format '{{.Names}}' | grep -q "^3x-ui-"; then
+                    echo "[🔍] 已检测到 3x-ui 容器，进入控制台..."
+                    xui_container=$(docker ps --format '{{.Names}}' | grep '^3x-ui-')
+                    docker exec -it "$xui_container" x-ui
+                    read -p "[↩️] 按 Enter 返回主菜单" dummy
+                else
+                    echo "[🚀] 开始部署 3x-ui 面板..."
+                    curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/3x-ui.sh -o 3x-ui.sh
+                    chmod +x 3x-ui.sh && ./3x-ui.sh
+                    read -p "[按 Enter 回车返回主菜单]" dummy
+                fi
                 ;;
             0)
                 echo "[👋] 已退出"
