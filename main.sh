@@ -44,6 +44,7 @@ function main_menu() {
         echo "6) 卸载 Web 多站部署系统"
         echo "7) 创建 Halo 博客站点"
         echo "8) 重启 Caddy 容器"
+        echo "8) 热更新Caddy 配置"
         echo "0) 退出"
         echo "----------------------------------------"
         read -p "请选择操作: " choice
@@ -90,6 +91,11 @@ function main_menu() {
                 chmod +x restart_caddy.sh && ./restart_caddy.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;            
+            9)
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/reload_caddy.sh -o reload_caddy.sh
+                chmod +x reload_caddy.sh && ./reload_caddy.sh
+                read -p "[按 Enter 回车返回主菜单]" dummy
+                ;;                    
             0)
                 echo "[👋] 已退出"
                 exit 0
