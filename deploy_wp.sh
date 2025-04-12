@@ -1,18 +1,15 @@
 #!/bin/bash
+
 set -Eeuo pipefail
 
 # ==== 错误处理 ====
-SKIP_ERROR_HANDLER=false
 function error_handler() {
     local exit_code=$?
     local line_no=$1
     local cmd=$2
-    if [[ "$SKIP_ERROR_HANDLER" != true ]]; then
-        echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
-        echo "[🧭] 出错行号：$line_no"
-        echo "[💥] 出错命令：$cmd"
-        echo "[📌] 脚本路径：$(realpath "$0")"
-    fi
+    echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
+    echo "[🧭] 出错行号：$line_no"
+    echo "[💥] 出错命令：$cmd"
     exit $exit_code
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
@@ -49,8 +46,6 @@ if [[ "$resolved_ip" != "$public_ip" ]]; then
     read -p "❗域名未正确解析，是否仍要继续部署？(y/N): " proceed
     if [[ "$proceed" != "y" && "$proceed" != "Y" ]]; then
         echo "[-] 已取消部署"
-        read -p "[按 Enter 回车返回主菜单]" dummy
-        SKIP_ERROR_HANDLER=true
         exit 0
     fi
 else
@@ -63,9 +58,8 @@ site_dir="$WEB_BASE/$sitename"
 
 # ==== 检查是否已部署 ====
 if [[ -d "$site_dir" ]]; then
-    echo "[🚫] 站点 $domain 已部署（路径：$site_dir）"
-    echo "➡️  请先删除该站点或更换域名后再部署"
-    SKIP_ERROR_HANDLER=true
+    echo "[🚫] 检测到站点目录已存在：$site_dir"
+    echo "请先删除旧站点或更换其他域名后重试"
     exit 0
 fi
 
@@ -166,4 +160,3 @@ echo "🔑 密码: $db_pass"
 echo "🔐 Root 密码: $db_root"
 echo "📂 路径: $site_dir"
 echo "----------------------------------------------"
-read -p "[按 Enter 回车返回主菜单]" dummy
