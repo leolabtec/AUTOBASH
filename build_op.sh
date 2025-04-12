@@ -8,7 +8,7 @@ WORK_DIR="/build"
 OUT_DIR="/outbuild"
 BUILD_LOG="$WORK_DIR/build.log"
 
-DEFAULT_PLUGINS=""
+DEFAULT_PLUGINS="luci-app-passwall luci-app-openclash luci-app-wireguard ip-full resolveip luci-app-ddns-go netdata luci-app-mwan3 luci-app-udpxy luci-app-vnstat"
 DEFAULT_ARCH="x86_64"
 
 fetch_sources() {
@@ -39,15 +39,36 @@ fetch_sources() {
   esac
 }
 
+add_feeds() {
+  echo "🔧 添加 Lienol 第三方 feeds..."
+  cd "$WORK_DIR/openwrt"
+  echo "src-git lienol https://github.com/Lienol/openwrt-package" >> feeds.conf.default
+  ./scripts/feeds update -a && ./scripts/feeds install -a
+}
+
 generate_default_config() {
   cd "$WORK_DIR/openwrt"
   echo "🧹 清除旧配置..."
   rm -f .config
 
-  echo "⚙️ 生成纯净 x86_64 配置..."
-  echo "CONFIG_TARGET_${DEFAULT_ARCH}_Generic=y" >> .config
+  echo "⚙️ 写入 x86_64 默认配置"
   echo "CONFIG_TARGET_${DEFAULT_ARCH}=y" >> .config
+  echo "CONFIG_TARGET_${DEFAULT_ARCH}_Generic=y" >> .config
+
+  for pkg in $DEFAULT_PLUGINS; do
+    echo "CONFIG_PACKAGE_${pkg}=y" >> .config
+  done
+
+  echo "🔄 执行 defconfig..."
   make defconfig
+
+  echo "🌟 检测当前配置的编译架构："
+  grep CONFIG_TARGET_ .config | grep '=y'
+
+  if ! grep -q 'CONFIG_TARGET_x86_64=y' .config; then
+    echo '❌ 编译配置中架构非 x86_64，中止编译。'
+    exit 1
+  fi
 }
 
 build_firmware() {
@@ -70,9 +91,10 @@ save_output() {
 
 cd "$WORK_DIR"
 fetch_sources
+add_feeds
 generate_default_config
 build_firmware
 save_output
 
-echo "🎉 纯净 x86_64 OpenWrt 编译完成!"
+echo "🎉 x86_64 OpenWrt 编译完成！"
 exit 0
