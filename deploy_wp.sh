@@ -14,16 +14,16 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# ==== 设置路径 ====
+# ==== 路径设置 ====
 WEB_BASE="/home/dockerdata/docker_web"
 CADDYFILE="/home/dockerdata/docker_caddy/Caddyfile"
-UPLOADS_INI="$WEB_BASE/config/uploads.ini"
+UPLOADS_INI="/home/size/uploads.ini"
 CADDY_NET="caddy_net"
 
-# ==== 创建 uploads.ini（如不存在） ====
+# ==== 确保 uploads.ini 存在 ====
 if [[ ! -f "$UPLOADS_INI" ]]; then
+    echo "[*] uploads.ini 未找到，自动创建中..."
     mkdir -p "$(dirname "$UPLOADS_INI")"
-    echo "[*] 生成 PHP 上传配置 uploads.ini"
     cat > "$UPLOADS_INI" <<EOF
 upload_max_filesize = 64M
 post_max_size = 64M
@@ -35,27 +35,27 @@ fi
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
 
+# ==== 标准化站点名 ====
 sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
 site_dir="$WEB_BASE/$sitename"
 
-# ==== 数据库相关 ====
+# ==== 数据库配置 ====
 db_name="wp_${sitename}"
 db_user="wpuser_${sitename}"
 db_pass=$(openssl rand -base64 12)
 db_root=$(openssl rand -base64 12)
 
+# ==== 创建目录结构 ====
 echo "[*] 创建站点目录：$site_dir"
 mkdir -p "$site_dir/html" "$site_dir/db"
 
 # ==== 下载 WordPress ====
 echo "[*] 下载并解压 WordPress..."
 curl -sL https://cn.wordpress.org/latest-zh_CN.tar.gz | tar -xz -C "$site_dir/html" --strip-components=1
-
-# 设置 WordPress 文件夹权限（确保插件、上传等正常）
-chown -R 33:33 "$site_dir/html"
+chown -R 33:33 "$site_dir/html"  # 确保 Apache 用户可写
 
 # ==== 写入 .env 文件 ====
-echo "[*] 写入 .env 配置"
+echo "[*] 写入 .env 配置..."
 cat > "$site_dir/.env" <<EOF
 DB_NAME=$db_name
 DB_USER=$db_user
@@ -63,7 +63,7 @@ DB_PASS=$db_pass
 DB_ROOT=$db_root
 EOF
 
-# ==== 生成 docker-compose.yml ====
+# ==== 写入 docker-compose.yml ====
 echo "[*] 生成 docker-compose.yml..."
 cat > "$site_dir/docker-compose.yml" <<EOF
 version: '3.8'
@@ -106,7 +106,7 @@ networks:
     external: true
 EOF
 
-# ==== 启动服务 ====
+# ==== 启动容器 ====
 echo "[*] 启动服务容器..."
 (cd "$site_dir" && docker-compose up -d)
 
@@ -119,14 +119,14 @@ $domain {
 }
 EOF
 
-# ==== 重载 Caddy ====
+# ==== 重载 Caddy 配置 ====
 echo "[*] 重载 Caddy..."
 docker exec caddy-proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
     echo "[❌] Caddy reload 失败，请手动检查配置"
     exit 1
 }
 
-# ==== 输出信息 ====
+# ==== 成功提示 ====
 echo -e "\n[✅] 站点部署成功"
 echo "----------------------------------------------"
 echo "🌐 域名: https://$domain"
