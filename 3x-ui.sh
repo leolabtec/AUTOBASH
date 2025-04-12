@@ -87,7 +87,7 @@ cat > "$site_dir/docker-compose.yml" <<EOF
 version: '3'
 services:
   3x-ui:
-    image: hongcheng618/3x-ui
+    image: hongcheng618/3x-ui:v0.1
     container_name: 3x-ui-$sitename
     hostname: dockerhost
     volumes:
