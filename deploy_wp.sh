@@ -34,7 +34,19 @@ fi
 # ==== 读取域名 ====
 read -p "[+] 请输入要部署的域名（如 wp1.example.com）: " domain
 [[ -z "$domain" ]] && echo "[-] 域名不能为空" && exit 1
+# ==== 检查域名是否解析到本机公网 IP ====
+echo "[🌐] 检查域名解析..."
+public_ip=$(curl -s https://api.ipify.org || curl -s https://ifconfig.me)
+resolved_ip=$(dig +short "$domain" | tail -n1)
 
+if [[ "$resolved_ip" != "$public_ip" ]]; then
+    echo "[⚠️] 警告：域名 $domain 当前解析到 $resolved_ip"
+    echo "[💡] 本机公网 IP 为 $public_ip"
+    read -p "❗域名未正确解析，是否仍要继续部署？(y/N): " proceed
+    [[ "$proceed" != "y" && "$proceed" != "Y" ]] && echo "[-] 已取消部署" && exit 1
+else
+    echo "[✅] 域名已正确解析到本机"
+fi
 # ==== 标准化站点名 ====
 sitename=$(echo "$domain" | sed 's/[^a-zA-Z0-9]/_/g')
 site_dir="$WEB_BASE/$sitename"
