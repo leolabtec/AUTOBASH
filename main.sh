@@ -2,6 +2,7 @@
 
 set -Eeuo pipefail
 
+# === 错误追踪 ===
 function error_handler() {
     local exit_code=$?
     local line_no=$1
@@ -14,33 +15,35 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# 主菜单函数
+# === 主菜单 ===
 function main_menu() {
     while true; do
         clear
-        echo "🧩 WordPress 多站自动部署"
+        echo "🧩 WordPress 多站部署管理"
         echo "----------------------------------------"
         echo "1) 创建新站点"
         echo "2) 查看已部署站点"
         echo "3) 查看数据库容器"
         echo "4) 删除站点（包含数据库与配置）"
         echo "5) 设置快捷启动命令"
+        echo "6) 卸载 Web 多站部署系统"
         echo "0) 退出"
         echo "----------------------------------------"
-        echo -n "请选择操作: "
-        read choice
+        read -p "请选择操作: " choice
 
-                case $choice in
+        case $choice in
             1)
                 curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/deploy_wp.sh -o deploy_wp.sh
                 chmod +x deploy_wp.sh && ./deploy_wp.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             2)
+                echo "[📦] 当前部署的站点（WordPress 容器）："
                 docker ps --format '{{.Names}}' | grep '^wp-' || echo "[!] 暂无 WordPress 容器"
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             3)
+                echo "[🛢️] 当前数据库容器："
                 docker ps --format '{{.Names}}' | grep '^db-' || echo "[!] 暂无数据库容器"
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
@@ -54,8 +57,14 @@ function main_menu() {
                 chmod +x set_shortcut.sh && ./set_shortcut.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
+            6)
+                echo "[⚠️] 即将运行卸载脚本 uninstall.sh..."
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/uninstall.sh -o uninstall.sh
+                chmod +x uninstall.sh && ./uninstall.sh
+                read -p "[按 Enter 回车返回主菜单]" dummy
+                ;;
             0)
-                echo "退出"
+                echo "[👋] 已退出"
                 exit 0
                 ;;
             *)
