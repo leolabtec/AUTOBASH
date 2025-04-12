@@ -18,13 +18,15 @@ trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 function main_menu() {
     while true; do
         clear
+        echo "🧩 WordPress 多站自动部署"
+        echo "----------------------------------------"
         echo "1) 创建新站点"
         echo "2) 查看已部署站点"
         echo "3) 查看数据库容器"
-        echo "4) 删除站点"
-        echo "5) 删除数据库容器"
-        echo "6) 设置快捷启动命令"
+        echo "4) 删除站点（包含数据库与配置）"
+        echo "5) 设置快捷启动命令"
         echo "0) 退出"
+        echo "----------------------------------------"
         echo -n "请选择操作: "
         read choice
 
@@ -43,19 +45,17 @@ function main_menu() {
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             4)
-                echo "[!] 删除功能开发中..."
-                read -p "[按 Enter 回车返回主菜单]" dummy
-                ;;
-            5)
-                echo "[!] 删除功能开发中..."
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/delete_site.sh -o delete_site.sh
+                chmod +x delete_site.sh && ./delete_site.sh site
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             6)
-                echo "[!] 快捷设置功能开发中..."
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/main/set_shortcut.sh -o set_shortcut.sh
+                chmod +x set_shortcut.sh && ./set_shortcut.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             0)
-                echo "退出"
+                echo "[🚪] 已退出"
                 exit 0
                 ;;
             *)
