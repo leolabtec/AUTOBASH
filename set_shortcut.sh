@@ -35,7 +35,7 @@ echo "[📌] 主菜单路径: $main_path"
 target_path="/usr/local/bin/$shortcut"
 if [[ -e "$target_path" ]]; then
     read -rp "[⚠️] 已存在命令 [$shortcut]，是否覆盖？(y/N): " confirm
-    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消设置" && exit 1
+    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消设置" && exit 0
     rm -f "$target_path"
 fi
 
