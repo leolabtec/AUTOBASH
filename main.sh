@@ -42,7 +42,7 @@ function main_menu() {
         echo "4) 删除站点（包含数据库与配置）"
         echo "5) 设置快捷启动命令"
         echo "6) 卸载 Web 多站部署系统"
-        echo "7) 创建独角数卡站点"
+        echo "7) 创建 Halo 博客站点"
         echo "8) 重启 Caddy 容器"
         echo "0) 退出"
         echo "----------------------------------------"
@@ -81,8 +81,8 @@ function main_menu() {
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             7)
-                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/main/dujiaoka.sh -o dujiaoka.sh
-                chmod +x dujiaoka.sh && ./dujiaoka.sh
+                curl -fsSL https://raw.githubusercontent.com/leolabtec/AUTOBASH/refs/heads/main/install_halo.sh -o install_halo.sh
+                chmod +x install_halo.sh && ./install_halo.sh
                 read -p "[按 Enter 回车返回主菜单]" dummy
                 ;;
             8)
