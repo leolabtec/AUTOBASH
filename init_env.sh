@@ -15,37 +15,43 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# 定义全局路径
+# ✅ 全局路径定义
 ROOT_DIR="/home/dockerdata"
 WEB_DIR="$ROOT_DIR/docker_web"
 CADDY_DIR="$ROOT_DIR/docker_caddy"
 CADDYFILE="$CADDY_DIR/Caddyfile"
+FLAG_FILE="/etc/autowp_env_initialized"
 
-# 创建目录结构
+echo "[*] 开始初始化 WordPress 多站部署环境..."
+
+# ✅ 创建目录结构
 mkdir -p "$WEB_DIR"
 mkdir -p "$CADDY_DIR"
-
-echo "[*] 创建站点与 Caddy 配置目录..."
+echo "[*] 创建站点与 Caddy 配置目录完成"
 echo "[*] Caddyfile 路径: $CADDYFILE"
 
-# 创建空 Caddyfile 如未存在
+# ✅ 创建空白 Caddyfile（如不存在）
 if [[ ! -f "$CADDYFILE" ]]; then
     echo "[*] 初始化空白 Caddyfile"
-    echo "{" > "$CADDYFILE"
-    echo "    email admin@yourdomain.com" >> "$CADDYFILE"
-    echo "}" >> "$CADDYFILE"
+    cat > "$CADDYFILE" <<EOF
+{
+    email admin@yourdomain.com
+}
+EOF
+else
+    echo "[✓] Caddyfile 已存在，跳过"
 fi
 
-# 创建 Docker 网络（仅在不存在时）
-if ! docker network ls | grep -q caddy_net; then
+# ✅ 创建 Docker 网络（如不存在）
+if ! docker network ls | grep -qw caddy_net; then
     echo "[*] 创建 Caddy 专用 Docker 网络 (caddy_net)..."
     docker network create caddy_net
 else
-    echo "[✓] Docker 网络 caddy_net 已存在，跳过创建"
+    echo "[✓] Docker 网络 caddy_net 已存在，跳过"
 fi
 
-# 启动 Caddy 容器（Docker 版）
-if ! docker ps | grep -q caddy-proxy; then
+# ✅ 启动 Caddy 容器（如未运行）
+if ! docker ps -a --format '{{.Names}}' | grep -qw "caddy-proxy"; then
     echo "[*] 启动 Caddy 反向代理容器..."
     docker run -d \
         --name caddy-proxy \
@@ -59,7 +65,11 @@ if ! docker ps | grep -q caddy-proxy; then
         caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     echo "[√] Caddy 已启动并监听 80/443 端口"
 else
-    echo "[✓] Caddy 容器已在运行中，跳过启动"
+    echo "[✓] Caddy 容器已存在，跳过启动"
 fi
 
-echo -e "\n[✅] 初始化完成，可运行主菜单脚本 main.sh 开始部署站点"
+# ✅ 写入初始化标记
+touch "$FLAG_FILE"
+echo "[📌] 初始化完成标记已写入 $FLAG_FILE"
+
+echo -e "\n[✅] 环境初始化完成，可运行主菜单脚本 main.sh 开始部署站点"
