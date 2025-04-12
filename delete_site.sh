@@ -58,9 +58,18 @@ delete_site() {
     echo "[🗑️] 删除站点目录..."
     rm -rf "$WEB_BASE/$sitename"
 
-    echo "[🧾] 移除 Caddy 配置..."
-    escaped_domain=$(printf '%s\n' "$domain_guess" | sed 's/[][\.*^$/]/\\&/g')
-    sed -i "/^$escaped_domain {/,/^}/d" "$CADDYFILE"
+    echo "[🧾] 清理 Caddyfile 配置..."
+    tmp_file=$(mktemp)
+    awk -v domain="$domain_guess" '
+        BEGIN { skip = 0 }
+        $0 ~ "^[ \t]*" domain "[ \t]*\\{" { skip = 1; next }
+        skip && $0 ~ /^[ \t]*\}/ { skip = 0; next }
+        !skip { print }
+    ' "$CADDYFILE" > "$tmp_file" && mv "$tmp_file" "$CADDYFILE"
+
+    if grep -q "$domain_guess" "$CADDYFILE"; then
+        echo "[⚠️] 警告：Caddyfile 中仍残留 $domain_guess，建议手动检查清理"
+    fi
 
     echo "[♻️] 重载 Caddy..."
     docker exec caddy-proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile || {
