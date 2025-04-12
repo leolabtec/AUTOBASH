@@ -3,47 +3,41 @@
 set -Eeuo pipefail
 
 function error_handler() {
-    echo -e "\n[❌] 脚本错误，退出码：$?"
-    echo "[📌] 脚本路径：$(realpath "$0")"
-    exit 1
+    local exit_code=$?
+    local line_no=$1
+    local cmd=$2
+    echo -e "\n[❌] 脚本发生错误，退出码：$exit_code"
+    echo "[🧭] 出错行号：$line_no"
+    echo "[💥] 出错命令：$cmd"
+    exit $exit_code
 }
-trap 'error_handler' ERR
+trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-MAIN_SCRIPT="$HOME/main.sh"
-ALIAS_CMD="bash $MAIN_SCRIPT"
-ALIAS_NAME="autowp"
-LINK_PATH="/usr/local/bin/$ALIAS_NAME"
+# 🔧 设置快捷命令
+echo -e "\n[🔧] 开始配置快捷启动命令..."
+read -rp "[+] 请输入你想使用的快捷命令名称（例如 mywp 或 wpctl）: " shortcut
 
-echo "[🔧] 开始配置快捷启动命令 autowp..."
-
-# 方法 1: 添加到 /usr/local/bin
-if [[ -f "$MAIN_SCRIPT" ]]; then
-    echo "[📌] 主菜单路径: $MAIN_SCRIPT"
-
-    echo "[+] 尝试写入快捷执行文件到 $LINK_PATH"
-    echo "#!/bin/bash" > "$LINK_PATH"
-    echo "$ALIAS_CMD" >> "$LINK_PATH"
-    chmod +x "$LINK_PATH"
-
-    if [[ -x "$LINK_PATH" ]]; then
-        echo "[✅] 已可通过命令 autowp 直接启动主菜单"
-        exit 0
-    else
-        echo "[!] 无法写入 /usr/local/bin，尝试写入 alias..."
-    fi
-else
-    echo "[❌] 未找到 $MAIN_SCRIPT，请确保先运行 install.sh 初始化环境"
+# 检查输入是否合法
+if [[ -z "$shortcut" || ! "$shortcut" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "[❌] 快捷命令名称不能为空，且只能包含字母、数字、- 或 _"
     exit 1
 fi
 
-# 方法 2: 添加到 shell 配置文件
-SHELL_RC="$HOME/.bashrc"
-[[ $SHELL == */zsh ]] && SHELL_RC="$HOME/.zshrc"
+# 获取当前主菜单路径
+main_path=$(realpath ./main.sh)
+echo "[📌] 主菜单路径: $main_path"
 
-if grep -q "$ALIAS_NAME=" "$SHELL_RC"; then
-    echo "[✓] alias 已存在于 $SHELL_RC，无需重复添加"
-else
-    echo "[+] 添加 alias 到 $SHELL_RC"
-    echo "alias $ALIAS_NAME=\"$ALIAS_CMD\"" >> "$SHELL_RC"
-    echo "[✅] 已添加 alias，请执行 'source $SHELL_RC' 或重启终端后生效"
+# 检查目标是否已存在
+target_path="/usr/local/bin/$shortcut"
+if [[ -e "$target_path" ]]; then
+    echo "[⚠️] 已存在命令 $shortcut，是否覆盖？(y/N): "
+    read -r confirm
+    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消" && exit 1
+    rm -f "$target_path"
 fi
+
+# 写入软链接
+ln -s "$main_path" "$target_path"
+chmod +x "$main_path"
+
+echo -e "\n[✅] 设置成功！你现在可以直接通过命令 [ $shortcut ] 启动 WordPress 多站管理面板。"
