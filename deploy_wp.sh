@@ -44,17 +44,19 @@ resolved_aaaa=$(dig +short AAAA "$domain" | tail -n1)
 if [[ -z "$resolved_a" && -z "$resolved_aaaa" ]]; then
     echo "[❌] 域名未解析：未找到 A 或 AAAA 记录"
     echo "[💡] 请前往 DNS 服务商设置解析记录，确保域名指向公网 IP：$public_ip"
-    echo "   - 示例记录：w2.9333.network A $public_ip"
+    echo "   - 示例记录：$domain A $public_ip"
     echo "   - 或 AAAA 记录用于 IPv6 环境"
     read -p "是否仍要强制继续部署？(y/N): " force_continue
-    [[ "$force_continue" != "y" && "$force_continue" != "Y" ]] && echo "[-] 已取消部署" && read -p "[按 Enter 返回]" && exit 0
+
+    if [[ "$force_continue" != "y" && "$force_continue" != "Y" ]]; then
+        echo "[-] 已取消部署"
+        read -p "[按 Enter 返回]"
+        exit 0
+    fi
 else
     echo "[✅] 已检测到解析记录："
     [[ -n "$resolved_a" ]] && echo "    A 记录 ➜ $resolved_a"
     [[ -n "$resolved_aaaa" ]] && echo "    AAAA 记录 ➜ $resolved_aaaa"
-fi
-else
-    echo "[✅] 域名已正确解析到本机"
 fi
 
 # ==== 标准化站点名 ====
