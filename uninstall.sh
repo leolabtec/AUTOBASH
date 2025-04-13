@@ -13,42 +13,42 @@ function error_handler() {
 }
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 
-# ✅ 路径定义
-WEB_DIR="/home/dockerdata/docker_web"
-CADDY_DIR="/home/dockerdata/docker_caddy"
-CADDYFILE="$CADDY_DIR/Caddyfile"
-FLAG_FILE="/etc/autowp_env_initialized"
-
-# ✅ 卸载确认
-read -rp "⚠️  确认要卸载整个 WordPress 多站部署环境？这将删除容器、数据、配置等（y/N）: " confirm
+# ✅ 提示确认
+echo -e "⚠️  确认要卸载整个部署环境？将删除所有容器、数据、脚本和快捷命令。(y/N): \c"
+read confirm
 [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消卸载" && exit 0
 
-# ✅ 停止 Caddy
-echo "[*] 停止并删除 Caddy 容器..."
-docker rm -f caddy-proxy 2>/dev/null || true
+# ✅ 卸载 /home/dockerdata 下的容器和数据
+echo "[*] 清理 /home/dockerdata 中的所有部署服务..."
+if [[ -d /home/dockerdata ]]; then
+    for subdir in /home/dockerdata/*; do
+        if [[ -d "$subdir" ]]; then
+            for site in "$subdir"/*; do
+                if [[ -f "$site/docker-compose.yml" ]]; then
+                    echo "[🔽] 停止并删除容器: $site"
+                    (cd "$site" && docker-compose down || true)
+                fi
+            done
+        fi
+    done
+    echo "[🗑️] 删除整个 dockerdata 数据目录..."
+    rm -rf /home/dockerdata
+fi
 
-# ✅ 删除所有 WordPress & 数据库容器
-echo "[*] 删除所有 WordPress/MySQL 容器..."
-containers=$(docker ps -a --format '{{.Names}}' | grep -E '^wp-|^db-' || true)
-for cname in $containers; do
-    docker rm -f "$cname" || echo "[!] 容器 $cname 删除失败"
+# ✅ 删除 main.sh 所在目录的所有 .sh 脚本
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+echo "[🧹] 删除主控目录下所有 .sh 脚本..."
+find "$SCRIPT_DIR" -maxdepth 1 -type f -name "*.sh" -exec rm -f {} \;
+
+# ✅ 删除快捷命令（软链接）
+echo "[🧼] 检查并删除设置的快捷命令..."
+for file in /usr/local/bin/*; do
+    if [[ -L "$file" ]] && [[ "$(readlink -f "$file")" == "$SCRIPT_DIR/main.sh" ]]; then
+        echo "[❎] 删除快捷命令: $(basename "$file")"
+        rm -f "$file"
+    fi
 done
 
-# ✅ 删除数据目录
-echo "[*] 删除站点目录与 Caddy 配置..."
-rm -rf "$WEB_DIR"
-rm -rf "$CADDY_DIR"
-
-# ✅ 删除初始化标志
-echo "[*] 删除初始化标记文件..."
-rm -f "$FLAG_FILE"
-
-# ✅ 删除当前目录下所有 .sh 脚本（包括本文件）
-echo "[*] 清理当前目录下的所有脚本文件..."
-find . -maxdepth 1 -type f -name "*.sh" ! -name "uninstall.sh" -exec rm -f {} \;
-rm -f uninstall.sh
-
-# ✅ 完成提示
-echo -e "\n[✅] WordPress 多站部署环境已彻底卸载"
-echo -e "\n[✅] 卸载完成，所有相关内容已被清理干净"
-echo "[⚠️] 当前正在运行的主菜单脚本将不可用，请关闭终端或退出后重新进入。"
+# ✅ 卸载成功提示
+echo -e "\n[✅] 卸载完成，所有部署相关内容已被清理干净"
+echo "[⚠️] 当前终端仍在运行，建议重新连接 SSH 或关闭窗口。"
