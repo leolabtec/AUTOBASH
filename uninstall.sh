@@ -19,8 +19,8 @@ CADDY_DIR="/home/dockerdata/docker_caddy"
 CADDYFILE="$CADDY_DIR/Caddyfile"
 FLAG_FILE="/etc/autowp_env_initialized"
 
-echo -e "⚠️  确认要卸载整个 WordPress 多站部署环境？这将删除容器、数据、配置等（y/N）: \c"
-read confirm
+# ✅ 卸载确认
+read -rp "⚠️  确认要卸载整个 WordPress 多站部署环境？这将删除容器、数据、配置等（y/N）: " confirm
 [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "[-] 已取消卸载" && exit 0
 
 # ✅ 停止 Caddy
@@ -43,6 +43,12 @@ rm -rf "$CADDY_DIR"
 echo "[*] 删除初始化标记文件..."
 rm -f "$FLAG_FILE"
 
+# ✅ 删除当前目录下所有 .sh 脚本（包括本文件）
+echo "[*] 清理当前目录下的所有脚本文件..."
+find . -maxdepth 1 -type f -name "*.sh" ! -name "uninstall.sh" -exec rm -f {} \;
+rm -f uninstall.sh
+
+# ✅ 完成提示
 echo -e "\n[✅] WordPress 多站部署环境已彻底卸载"
 echo -e "\n[✅] 卸载完成，所有相关内容已被清理干净"
 echo "[⚠️] 当前正在运行的主菜单脚本将不可用，请关闭终端或退出后重新进入。"
