@@ -1,6 +1,7 @@
+cat <<'EOF' > ~/openwrt_build/build_op.sh
 #!/bin/bash
-
 set -e
+
 WORK_DIR="/build"
 OUT_DIR="/outbuild"
 BUILD_LOG="$WORK_DIR/build.log"
@@ -34,3 +35,6 @@ make -j$(nproc --ignore=1) V=s | tee "$BUILD_LOG"
 echo "📦 拷贝固件至 $OUT_DIR..."
 cp -r bin/targets/* "$OUT_DIR/"
 echo "✅ 编译完成！固件已输出至：$OUT_DIR"
+EOF
+
+chmod +x ~/openwrt_build/build_op.sh
