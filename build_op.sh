@@ -8,7 +8,7 @@ WORK_DIR="/build"
 OUT_DIR="/outbuild"
 BUILD_LOG="$WORK_DIR/build.log"
 
-DEFAULT_PLUGINS="luci-app-passwall luci-app-openclash luci-app-wireguard ip-full resolveip luci-app-ddns-go netdata luci-app-mwan3 luci-app-udpxy luci-app-vnstat"
+DEFAULT_PLUGINS="luci-app-passwall luci-app-openclash luci-app-wireguard ip-full resolveip luci-app-ddns-go netdata luci-app-mwan3 luci-app-udpxy luci-app-vnstat v2ray-core xray-core trojan-go hysteria hysteria2 sing-box tuic-client v2ray-geodata"
 DEFAULT_ARCH="x86_64"
 
 fetch_sources() {
@@ -39,11 +39,14 @@ fetch_sources() {
   esac
 }
 
-add_feeds() {
-  echo "🔧 添加 Lienol 第三方 feeds..."
+update_feeds_only() {
+  echo "🔧 只更新基础 feeds (packages / luci / routing / telephony)..."
   cd "$WORK_DIR/openwrt"
-  echo "src-git lienol https://github.com/Lienol/openwrt-package" >> feeds.conf.default
-  ./scripts/feeds update -a && ./scripts/feeds install -a
+  ./scripts/feeds update packages luci routing telephony
+  ./scripts/feeds install -a -p packages
+  ./scripts/feeds install -a -p luci
+  ./scripts/feeds install -a -p routing
+  ./scripts/feeds install -a -p telephony
 }
 
 generate_default_config() {
@@ -91,7 +94,7 @@ save_output() {
 
 cd "$WORK_DIR"
 fetch_sources
-add_feeds
+update_feeds_only
 generate_default_config
 build_firmware
 save_output
