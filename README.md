@@ -21,4 +21,4 @@
 ## 🚀 一键安装命令
 
 ```bash
-sudo curl -LO https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh
+curl -LO https://raw.githubusercontent.com/leolabtec/Autobuild_openwrt/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh
