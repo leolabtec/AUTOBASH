@@ -66,7 +66,7 @@ version: "3"
 
 services:
   halo:
-    image: registry.fit2cloud.com/halo/halo:latest
+    image: registry.fit2cloud.com/halo/halo:2.21
     container_name: halo-$sitename
     restart: always
     depends_on:
