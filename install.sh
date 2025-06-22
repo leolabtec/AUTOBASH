@@ -79,6 +79,8 @@ function install_dependencies() {
 
     # Docker Compose
     install_if_missing "Docker Compose" "command -v docker-compose" "apt install -y docker-compose"
+    # dig（dnsutils）
+    install_if_missing "dig (dnsutils)" "command -v dig" "apt install -y dnsutils"
 
     # Caddy（可选示例）
     # install_if_missing "Caddy" "command -v caddy" "apt install -y caddy"
