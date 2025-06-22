@@ -31,6 +31,7 @@ function check_if_clean_env() {
 }
 
 # ✅ 安装必要依赖（仅支持 Debian/Ubuntu）
+apt install -y dnsutils
 function install_dependencies() {
     echo "[📦] 检测系统环境..."
 
